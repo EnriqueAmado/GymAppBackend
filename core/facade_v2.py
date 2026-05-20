@@ -1,7 +1,32 @@
 from .models import Exercise, Routine, RoutineExercise, WorkoutLog
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+
 
 class GymFacade:
+
+    # --- LÓGICA DE USUARIOS Y AUTENTICACIÓN (NUEVO) ---
+    @staticmethod
+    def register_user(username, email, password):
+        """Crea un usuario en la BD de forma segura (contraseña encriptada)."""
+        if User.objects.filter(username=username).exists():
+            return None, "El nombre de usuario ya existe"
+        user = User.objects.create_user(username=username, email=email, password=password)
+        token, _ = Token.objects.get_or_create(user=user)
+        return token.key, None
+
+    @staticmethod
+    def authenticate_user(username, password):
+        """Verifica credenciales y retorna el Token si es válido."""
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            token, _ = Token.objects.get_or_create(user=user)
+            return token.key, None
+        return None, "Credenciales inválidas"
 
     # --- LÓGICA DE EJERCICIOS ---
     @staticmethod
@@ -56,3 +81,39 @@ class GymFacade:
             user=user,
             exercise_id=exercise_id
         ).order_by('date')
+
+
+
+# ENDPOINTS DE LA API (AQUÍ ES DONDE RETROFIT LLAMARÁ DESDE ANDROID)
+
+@api_view(['POST'])
+def api_register_user(request):
+    username = request.data.get('username')
+    email = request.data.get('email')
+    password = request.data.get('password')
+
+    if not username or not password or not email:
+        return Response({'error': 'Todos los campos son obligatorios'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Llamamos a nuestra fachada limpia
+    token_key, error_msg = GymFacade.register_user(username, email, password)
+
+    if error_msg:
+        return Response({'error': error_msg}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'token': token_key, 'username': username}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+def api_login_user(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    if not username or not password:
+        return Response({'error': 'Usuario y contraseña obligatorios'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Llamamos a nuestra fachada limpia
+    token_key, error_msg = GymFacade.authenticate_user(username, password)
+
+    if error_msg:
+        return Response({'error': error_msg}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'token': token_key, 'username': username}, status=status.HTTP_200_OK)
