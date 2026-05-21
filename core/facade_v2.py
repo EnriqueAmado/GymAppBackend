@@ -6,6 +6,10 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 
+from rest_framework.decorators import authentication_classes, permission_classes
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
+
 
 class GymFacade:
 
@@ -117,3 +121,67 @@ def api_login_user(request):
     if error_msg:
         return Response({'error': error_msg}, status=status.HTTP_400_BAD_REQUEST)
     return Response({'token': token_key, 'username': username}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET', 'POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def api_routines(request):
+    """
+    GET: Devuelve todas las rutinas del usuario logueado con sus ejercicios.
+    POST: Crea una rutina para el usuario logueado.
+    """
+    user = request.user
+
+    if request.method == 'GET':
+        # Obtenemos las rutinas
+        routines = GymFacade.get_user_routines(user)
+
+        # Construimos un JSON para evitar líos de Serializers complejos
+        response_data = []
+        for r in routines:
+            # Buscamos los ejercicios asignados a esta rutina (los detalles de las series)
+            exercises_in_routine = []
+            for re in r.exercises.all():
+                exercises_in_routine.append({
+                    'id': re.id,
+                    'exercise_name': re.exercise.name,
+                    'body_part': re.exercise.body_part,
+                    'sets': re.sets,
+                    'reps': re.reps,
+                    'order': re.order
+                })
+
+            response_data.append({
+                'id': r.id,
+                'name': r.name,
+                'created_at': r.created_at.strftime('%Y-%m-%d'),
+                'exercises': exercises_in_routine
+            })
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        name = request.data.get('name')
+        if not name:
+            return Response({'error': 'El nombre de la rutina es obligatorio'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Creamos la rutina vacía usando la fachada
+        new_routine = GymFacade.create_routine(user, name)
+
+        # Si en la petición vienen ejercicios metidos de golpe, los añadimos
+        exercises_list = request.data.get('exercises', [])
+        for item in exercises_list:
+            GymFacade.add_exercise_to_routine(
+                routine_id=new_routine.id,
+                exercise_id=item.get('exercise_id'),
+                sets=item.get('sets', 3),
+                reps=item.get('reps', 10),
+                order=item.get('order', 0)
+            )
+
+        return Response({
+            'id': new_routine.id,
+            'name': new_routine.name,
+            'message': 'Rutina creada con éxito'
+        }, status=status.HTTP_201_CREATED)
