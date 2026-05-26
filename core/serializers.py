@@ -2,26 +2,31 @@ from rest_framework import serializers
 from .models import Exercise, Routine, RoutineExercise, WorkoutLog
 
 
-# 1. Serializador de Ejercicios
+# Serializador de Ejercicios
 class ExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exercise
         fields = '__all__'
 
 
-# 2. Serializador del detalle de ejercicios dentro de una rutina
+# Serializador del detalle de ejercicios dentro de una rutina
 class RoutineExerciseSerializer(serializers.ModelSerializer):
-    # Esto es para que en el JSON salga el nombre del ejercicio y no solo el ID
+    routine = serializers.PrimaryKeyRelatedField(queryset=Routine.objects.all())
+    exercise = serializers.PrimaryKeyRelatedField(queryset=Exercise.objects.all())
+
+    # Creamos este campo dinámico de solo lectura que viaja al modelo Exercise
+    # y saca el nombre. Así no rompe el POST desde Android y te da el dato en el GET.
     exercise_name = serializers.ReadOnlyField(source='exercise.name')
 
     class Meta:
         model = RoutineExercise
-        fields = ['id', 'exercise', 'exercise_name', 'sets', 'reps', 'order']
+        # Incluimos tanto 'routine' (vital para el POST) como 'exercise_name' (vital para el GET)
+        fields = ['id', 'routine', 'exercise', 'exercise_name', 'sets', 'reps', 'order']
 
 
-# 3. Serializador de Rutinas (Cabecera + Lista de ejercicios)
+#  Serializador de Rutinas (Cabecera + Lista de ejercicios)
 class RoutineSerializer(serializers.ModelSerializer):
-    # Anidamos los ejercicios para que Android reciba la rutina completa de golpe
+    # Anidamos los ejercicios usando el related_name='exercises'
     exercises = RoutineExerciseSerializer(many=True, read_only=True)
 
     class Meta:
@@ -29,7 +34,7 @@ class RoutineSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'created_at', 'exercises']
 
 
-# 4. Serializador para los Logs (Progreso)
+#  Serializador para los Logs (Progreso)
 class WorkoutLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = WorkoutLog

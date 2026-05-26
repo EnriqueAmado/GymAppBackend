@@ -13,7 +13,7 @@ from rest_framework.permissions import IsAuthenticated
 
 class GymFacade:
 
-    # --- LÓGICA DE USUARIOS Y AUTENTICACIÓN (NUEVO) ---
+    # --- LÓGICA DE USUARIOS Y AUTENTICACIÓN ---
     @staticmethod
     def register_user(username, email, password):
         """Crea un usuario en la BD de forma segura (contraseña encriptada)."""
@@ -185,3 +185,54 @@ def api_routines(request):
             'name': new_routine.name,
             'message': 'Rutina creada con éxito'
         }, status=status.HTTP_201_CREATED)
+
+
+# 🌟 CORREGIDO: Eliminados los espacios iniciales para que Django lo lea como función global del módulo
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def api_add_exercise_to_routine(request):
+    """
+    POST: Recibe los datos de Android (routine, exercise, sets, reps, order)
+    y los inserta en la tabla intermedia a través de la Fachada.
+    """
+    data = request.data
+
+    # Recuperamos los parámetros que vienen del RoutineExerciseRequest de Android
+    routine_id = data.get('routine')
+    exercise_id = data.get('exercise')
+    sets = data.get('sets')
+    reps = data.get('reps')
+    order = data.get('order')
+
+    # Validamos que Android nos mande todos los campos obligatorios
+    if not all([routine_id, exercise_id, sets, reps, order]):
+        return Response(
+            {'error': 'Faltan campos obligatorios en la petición'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        # Reutilizamos el metodo de la fachada
+        routine_exercise = GymFacade.add_exercise_to_routine(
+            routine_id=int(routine_id),
+            exercise_id=int(exercise_id),
+            sets=int(sets),
+            reps=int(reps),
+            order=int(order)
+        )
+
+        # Respondemos con éxito absoluto (HTTP 201 Created)
+        return Response({
+            'id': routine_exercise.id,
+            'message': 'Ejercicio asociado con éxito a la rutina',
+            'routine_id': routine_id,
+            'exercise_name': routine_exercise.exercise.name
+        }, status=status.HTTP_201_CREATED)
+
+    except Routine.DoesNotExist:
+        return Response({'error': 'La rutina especificada no existe'}, status=status.HTTP_404_NOT_FOUND)
+    except Exercise.DoesNotExist:
+        return Response({'error': 'El ejercicio especificado no existe'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

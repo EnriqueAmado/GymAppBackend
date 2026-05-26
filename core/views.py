@@ -5,7 +5,7 @@ from .facade_v2 import GymFacade
 from .serializers import ExerciseSerializer, RoutineSerializer, WorkoutLogSerializer
 
 
-# 1. Vista para obtener el catálogo de ejercicios
+# Vista para obtener el catálogo de ejercicios
 class ExerciseListView(APIView):
     def get(self, request):
         exercises = GymFacade.get_all_exercises()
@@ -13,7 +13,7 @@ class ExerciseListView(APIView):
         return Response(serializer.data)
 
 
-# 2. Vista para las Rutinas del usuario
+# Vista para las Rutinas del usuario
 class RoutineListView(APIView):
     def get(self, request):
         # Por ahora usamos el usuario 1 (admin) para probar.
@@ -26,7 +26,7 @@ class RoutineListView(APIView):
         return Response(serializer.data)
 
 
-# 3. Vista para registrar un levantamiento (WorkoutLog)
+# Vista para registrar un levantamiento (WorkoutLog)
 class WorkoutLogCreateView(APIView):
     def post(self, request):
         from django.contrib.auth.models import User
