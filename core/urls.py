@@ -9,4 +9,5 @@ urlpatterns = [
     path('login/', facade_v2.api_login_user, name='login_user'),
     path('routines/', facade_v2.api_routines, name='api_routines'),
     path('routine-exercises/', facade_v2.api_add_exercise_to_routine, name='api_add_exercise_to_routine'),
+    path('workout-logs/', facade_v2.api_save_workout_log, name='api_save_workout_log'),
 ]

@@ -236,3 +236,37 @@ def api_add_exercise_to_routine(request):
         return Response({'error': 'El ejercicio especificado no existe'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def api_save_workout_log(request):
+    try:
+        # Recuperamos los datos que nos manda Android en el JSON
+        routine_exercise_id = request.data.get('routine_exercise')
+        weight = request.data.get('weight')
+        reps = request.data.get('reps')
+
+        if not routine_exercise_id or weight is None or reps is None:
+            return Response({"error": "Faltan campos obligatorios"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Buscamos la relación intermedia del ejercicio en la rutina
+        try:
+            routine_exercise = RoutineExercise.objects.get(id=routine_exercise_id)
+        except RoutineExercise.DoesNotExist:
+            return Response({"error": "La rutina-ejercicio no existe"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Creamos y guardamos el Log en la Base de Datos enlazado al usuario del Token
+        workout_log = WorkoutLog.objects.create(
+            user=request.user,  # Django saca el usuario directamente del Token de forma segura
+            exercise=routine_exercise.exercise,
+            weight=weight,
+            reps=reps
+        )
+
+        return Response({"message": "Serie guardada con éxito", "id": workout_log.id}, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
