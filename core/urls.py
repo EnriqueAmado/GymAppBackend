@@ -10,4 +10,6 @@ urlpatterns = [
     path('routines/', facade_v2.api_routines, name='api_routines'),
     path('routine-exercises/', facade_v2.api_add_exercise_to_routine, name='api_add_exercise_to_routine'),
     path('workout-logs/', facade_v2.api_save_workout_log, name='api_save_workout_log'),
+    path('routines/<int:pk>/delete/', facade_v2.api_delete_routine, name='api_delete_routine'),
+    path('routine-exercises/<int:pk>/delete/', facade_v2.api_delete_routine_exercise, name='api_delete_routine_exercise'),
 ]
