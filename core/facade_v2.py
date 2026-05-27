@@ -86,7 +86,18 @@ class GymFacade:
             exercise_id=exercise_id
         ).order_by('date')
 
+    # --- LÓGICA DE ELIMINACIÓN ---
+    @staticmethod
+    def delete_routine(user, routine_id):
+        """Elimina una rutina completa del usuario."""
+        routine = Routine.objects.get(id=routine_id, user=user)
+        routine.delete()  # Como tienes CASCADE, esto borrará sus RoutineExercise automáticamente.
 
+    @staticmethod
+    def delete_exercise_from_routine(user, routine_exercise_id):
+        """Elimina un ejercicio específico dentro de una rutina."""
+        routine_exercise = RoutineExercise.objects.get(id=routine_exercise_id, routine__user=user)
+        routine_exercise.delete()
 
 # ENDPOINTS DE LA API (AQUÍ ES DONDE RETROFIT LLAMARÁ DESDE ANDROID)
 
@@ -186,8 +197,6 @@ def api_routines(request):
             'message': 'Rutina creada con éxito'
         }, status=status.HTTP_201_CREATED)
 
-
-# 🌟 CORREGIDO: Eliminados los espacios iniciales para que Django lo lea como función global del módulo
 @api_view(['POST'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -272,20 +281,6 @@ def api_save_workout_log(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# --- LÓGICA DE ELIMINACIÓN ---
-@staticmethod
-def delete_routine(user, routine_id):
-    """Elimina una rutina completa del usuario."""
-    routine = Routine.objects.get(id=routine_id, user=user)
-    routine.delete()  # Como tienes CASCADE, esto borrará sus RoutineExercise automáticamente.
-
-@staticmethod
-def delete_exercise_from_routine(user, routine_exercise_id):
-    """Elimina un ejercicio específico dentro de una rutina."""
-    routine_exercise = RoutineExercise.objects.get(id=routine_exercise_id, routine__user=user)
-    routine_exercise.delete()
-
-    
 @api_view(['DELETE'])
 @authentication_classes([TokenAuthentication])
 @permission_classes([IsAuthenticated])
@@ -297,6 +292,7 @@ def api_delete_routine(request, pk):
     except Routine.DoesNotExist:
         return Response({'error': 'La rutina no existe o no te pertenece'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        print("❌ ERROR EN DELETE ROUTINE:", str(e))
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -311,4 +307,5 @@ def api_delete_routine_exercise(request, pk):
     except RoutineExercise.DoesNotExist:
         return Response({'error': 'El ejercicio no existe en esta rutina o no te pertenece'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
+        print("❌ ERROR EN DELETE EXERCISE:", str(e))
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
