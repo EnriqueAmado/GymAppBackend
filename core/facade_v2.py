@@ -10,6 +10,8 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 
+from .serializers import WorkoutLogSerializer
+
 
 class GymFacade:
 
@@ -68,12 +70,12 @@ class GymFacade:
 
     # --- LÓGICA DE ENTRENAMIENTO (LOGS) ---
     @staticmethod
-    def create_workout_log(user, exercise_id, weight, reps):
+    def create_workout_log(user, routine_exercise_id, weight, reps):
         """Registra una serie realizada por el usuario."""
-        exercise = Exercise.objects.get(id=exercise_id)
+        exercise = Exercise.objects.get(id=routine_exercise_id)
         return WorkoutLog.objects.create(
             user=user,
-            exercise=exercise,
+            exercise=routine_exercise_id,
             weight=weight,
             reps=reps
         )
@@ -86,12 +88,17 @@ class GymFacade:
             exercise_id=exercise_id
         ).order_by('date')
 
+    @staticmethod
+    def get_all_user_logs(user):
+        """Retorna absolutamente todo el historial de entrenamiento de un usuario."""
+        return WorkoutLog.objects.filter(user=user).order_by('date')
+
     # --- LÓGICA DE ELIMINACIÓN ---
     @staticmethod
     def delete_routine(user, routine_id):
         """Elimina una rutina completa del usuario."""
         routine = Routine.objects.get(id=routine_id, user=user)
-        routine.delete()  # Como tienes CASCADE, esto borrará sus RoutineExercise automáticamente.
+        routine.delete()
 
     @staticmethod
     def delete_exercise_from_routine(user, routine_exercise_id):
@@ -309,3 +316,55 @@ def api_delete_routine_exercise(request, pk):
     except Exception as e:
         print("❌ ERROR EN DELETE EXERCISE:", str(e))
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def api_get_progress(request, exercise_id):
+    """
+    Devuelve el historial de pesos y repeticiones de un ejercicio
+    para que Android pinte la gráfica.
+    """
+    user = request.user
+    logs = GymFacade.get_user_progress(user, exercise_id)
+
+    # Construimos la lista con la fecha, el peso y las repeticiones
+    response_data = []
+    for log in logs:
+        response_data.append({
+            'date': log.date.strftime('%Y-%m-%d'),
+            'weight': float(log.weight),
+            'reps': log.reps
+        })
+
+    return Response(response_data, status=status.HTTP_200_OK)
+
+@api_view(['GET', 'POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def api_workout_logs(request):
+    user = request.user
+
+    if request.method == 'GET':
+        # Llamamos al nuevo método de la fachada limpia
+        logs = GymFacade.get_all_user_logs(user)
+        serializer = WorkoutLogSerializer(logs, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    elif request.method == 'POST':
+        routine_exercise_id = request.data.get('routine_exercise')
+        weight = request.data.get('weight')
+        reps = request.data.get('reps')
+
+        if not routine_exercise_id or weight is None or reps is None:
+            return Response({"error": "Faltan campos obligatorios"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Delegamos en la fachada
+            GymFacade.create_workout_log(user, routine_exercise_id, weight, reps)
+            return Response({"message": "Serie guardada con éxito"}, status=status.HTTP_201_CREATED)
+        except RoutineExercise.DoesNotExist:
+            return Response({"error": "La rutina-ejercicio especificada no existe"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
