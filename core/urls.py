@@ -13,4 +13,5 @@ urlpatterns = [
     path('routines/<int:pk>/delete/', facade_v2.api_delete_routine, name='api_delete_routine'),
     path('routine-exercises/<int:pk>/delete/', facade_v2.api_delete_routine_exercise, name='api_delete_routine_exercise'),
     path('progress/<int:exercise_id>/', facade_v2.api_get_progress, name='api_get_progress'),
+    path('workout-logs/<int:pk>/delete/', facade_v2.api_delete_workout_log, name='api_delete_workout_log'),
 ]

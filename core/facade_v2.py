@@ -106,6 +106,12 @@ class GymFacade:
         routine_exercise = RoutineExercise.objects.get(id=routine_exercise_id, routine__user=user)
         routine_exercise.delete()
 
+    @staticmethod
+    def delete_workout_log(user, log_id):
+        """Elimina un registro de entrenamiento específico del usuario."""
+        log = WorkoutLog.objects.get(id=log_id, user=user)
+        log.delete()
+
 # ENDPOINTS DE LA API (AQUÍ ES DONDE RETROFIT LLAMARÁ DESDE ANDROID)
 
 @api_view(['POST'])
@@ -324,21 +330,12 @@ def api_delete_routine_exercise(request, pk):
 def api_get_progress(request, exercise_id):
     """
     Devuelve el historial de pesos y repeticiones de un ejercicio
-    para que Android pinte la gráfica.
+    usando el serializador para incluir el ID.
     """
     user = request.user
     logs = GymFacade.get_user_progress(user, exercise_id)
-
-    # Construimos la lista con la fecha, el peso y las repeticiones
-    response_data = []
-    for log in logs:
-        response_data.append({
-            'date': log.date.strftime('%Y-%m-%d'),
-            'weight': float(log.weight),
-            'reps': log.reps
-        })
-
-    return Response(response_data, status=status.HTTP_200_OK)
+    serializer = WorkoutLogSerializer(logs, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @api_view(['GET', 'POST'])
 @authentication_classes([TokenAuthentication])
@@ -368,3 +365,16 @@ def api_workout_logs(request):
             return Response({"error": "La rutina-ejercicio especificada no existe"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['DELETE'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([IsAuthenticated])
+def api_delete_workout_log(request, pk):
+    """Elimina un registro de entrenamiento por su ID."""
+    try:
+        GymFacade.delete_workout_log(request.user, pk)
+        return Response({'message': 'Registro eliminado con éxito'}, status=status.HTTP_200_OK)
+    except WorkoutLog.DoesNotExist:
+        return Response({'error': 'El registro no existe o no te pertenece'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
