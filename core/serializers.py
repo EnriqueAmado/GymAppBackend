@@ -36,6 +36,9 @@ class RoutineSerializer(serializers.ModelSerializer):
 
 #  Serializador para los Logs (Progreso)
 class WorkoutLogSerializer(serializers.ModelSerializer):
+    exercise_name = serializers.ReadOnlyField(source='exercise.name')
+    created_at = serializers.DateField(source='date', read_only=True)
+
     class Meta:
         model = WorkoutLog
-        fields = ['id', 'exercise', 'date', 'weight', 'reps']
+        fields = ['id', 'exercise', 'exercise_name', 'created_at', 'weight', 'reps']
