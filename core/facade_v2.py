@@ -354,15 +354,22 @@ def api_workout_logs(request):
         weight = request.data.get('weight')
         reps = request.data.get('reps')
 
-        if not routine_exercise_id or weight is None or reps is None:
+        if routine_exercise_id is None or weight is None or reps is None:
             return Response({"error": "Faltan campos obligatorios"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Delegamos en la fachada
-            GymFacade.create_workout_log(user, routine_exercise_id, weight, reps)
+            # SEGURIDAD: Solo puedes guardar series en relaciones que pertenezcan a tus rutinas
+            routine_exercise = RoutineExercise.objects.get(id=routine_exercise_id, routine__user=user)
+
+            WorkoutLog.objects.create(
+                user=user,
+                exercise=routine_exercise.exercise,
+                weight=weight,
+                reps=reps
+            )
             return Response({"message": "Serie guardada con éxito"}, status=status.HTTP_201_CREATED)
         except RoutineExercise.DoesNotExist:
-            return Response({"error": "La rutina-ejercicio especificada no existe"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "No tienes permiso o el ejercicio no existe en tu rutina"}, status=status.HTTP_403_FORBIDDEN)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

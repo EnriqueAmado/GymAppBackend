@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 class Exercise(models.Model):
     name = models.CharField(max_length=100, verbose_name="Nombre del Ejercicio")
     description = models.TextField(blank=True, null=True, verbose_name="Descripción")
-    body_part = models.CharField(max_length=50, verbose_name="Grupo Muscular") # Ej: Pecho, Espalda...
+    body_part = models.CharField(max_length=50, verbose_name="Grupo Muscular")
 
     def __str__(self):
         return self.name
