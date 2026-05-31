@@ -38,8 +38,9 @@ class RoutineExercise(models.Model):
 class WorkoutLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE)
-    date = models.DateField(auto_now_add=True) # Se pone la fecha de hoy automáticamente
-    weight = models.DecimalField(max_digits=5, decimal_places=2) # Soporta hasta 999.99 kg
+    routine = models.ForeignKey(Routine, on_delete=models.SET_NULL, null=True, blank=True) # Vinculamos a la rutina
+    date = models.DateField(auto_now_add=True)
+    weight = models.DecimalField(max_digits=5, decimal_places=2)
     reps = models.IntegerField()
 
     def __str__(self):

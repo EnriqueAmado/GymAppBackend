@@ -364,6 +364,7 @@ def api_workout_logs(request):
             WorkoutLog.objects.create(
                 user=user,
                 exercise=routine_exercise.exercise,
+                routine=routine_exercise.routine, # Guardamos la rutina a la que pertenecía
                 weight=weight,
                 reps=reps
             )
